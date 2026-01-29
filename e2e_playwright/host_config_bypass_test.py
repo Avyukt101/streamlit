@@ -26,7 +26,7 @@ import json
 import pytest
 from playwright.sync_api import Page, Route, WebSocket, expect
 
-from e2e_playwright.conftest import wait_until
+from e2e_playwright.conftest import build_app_url, wait_until
 from e2e_playwright.shared.app_utils import goto_app
 
 
@@ -78,7 +78,7 @@ def _inject_bypass_config(page: Page, backend_url: str) -> None:
 
 
 def test_bypass_mode_executes_websocket_and_host_config_in_parallel(
-    page: Page, app_port: int
+    page: Page, app_base_url: str
 ) -> None:
     """Test that bypass mode executes both WebSocket and host-config requests.
 
@@ -109,10 +109,10 @@ def test_bypass_mode_executes_websocket_and_host_config_in_parallel(
     page.route("**/_stcore/host-config", track_host_config)
 
     # Inject bypass config BEFORE navigation
-    _inject_bypass_config(page, f"http://localhost:{app_port}")
+    _inject_bypass_config(page, app_base_url)
 
     # Navigate to app
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     # Verify both WebSocket and host-config were used
     ws_events = [e for e in events if e["type"] == "websocket"]
@@ -124,11 +124,11 @@ def test_bypass_mode_executes_websocket_and_host_config_in_parallel(
     )
 
 
-def test_bypass_mode_app_becomes_interactive(page: Page, app_port: int) -> None:
+def test_bypass_mode_app_becomes_interactive(page: Page, app_base_url: str) -> None:
     """Test that app becomes interactive in bypass mode."""
-    _inject_bypass_config(page, f"http://localhost:{app_port}")
+    _inject_bypass_config(page, app_base_url)
 
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     # Verify app content loaded
     expect(page.get_by_text("Connection status test")).to_be_visible()
@@ -144,7 +144,7 @@ def test_bypass_mode_app_becomes_interactive(page: Page, app_port: int) -> None:
 
 
 def test_bypass_mode_host_config_values_take_precedence(
-    page: Page, app_port: int
+    page: Page, app_base_url: str
 ) -> None:
     """Test that window.__streamlit.HOST_CONFIG values override endpoint values.
 
@@ -162,7 +162,7 @@ def test_bypass_mode_host_config_values_take_precedence(
     page.add_init_script(
         f"""
         window.__streamlit = {{
-            BACKEND_BASE_URL: "http://localhost:{app_port}",
+            BACKEND_BASE_URL: "{app_base_url}",
             HOST_CONFIG: {{
                 allowedOrigins: {json.dumps(custom_allowed_origins)},
                 useExternalAuthToken: false,  // False so we don't block on auth token
@@ -172,7 +172,7 @@ def test_bypass_mode_host_config_values_take_precedence(
     """
     )
 
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     # The main verification is that the app loads successfully with custom config
     # If precedence was not working correctly, the app would fail or behave incorrectly
@@ -184,7 +184,7 @@ def test_bypass_mode_host_config_values_take_precedence(
     expect(button).to_be_enabled()
 
 
-def test_default_path_without_bypass_config(page: Page, app_port: int) -> None:
+def test_default_path_without_bypass_config(page: Page, app_base_url: str) -> None:
     """Test default behavior when no bypass config is provided.
 
     Without window.__streamlit config, the app should use the normal path
@@ -211,7 +211,7 @@ def test_default_path_without_bypass_config(page: Page, app_port: int) -> None:
     page.on("websocket", track_websocket)
 
     # Don't inject any window.__streamlit config - use default path
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     # Verify both host-config and WebSocket were used
     hc_events = [e for e in events if e["type"] == "host-config-start"]
@@ -239,7 +239,7 @@ def test_default_path_without_bypass_config(page: Page, app_port: int) -> None:
 
 
 def test_bypass_mode_handles_connection_errors_gracefully(
-    page: Page, app_port: int
+    page: Page, app_base_url: str
 ) -> None:
     """Test bypass mode functions by blocking host-config endpoint
     The app should still load because we bypass the endpoints to establish
@@ -263,10 +263,10 @@ def test_bypass_mode_handles_connection_errors_gracefully(
     page.route("**/_stcore/host-config", block_host_config)
 
     # Inject bypass config BEFORE navigation
-    _inject_bypass_config(page, f"http://localhost:{app_port}")
+    _inject_bypass_config(page, app_base_url)
 
     # Navigate to app
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     # Verify WebSocket connected despite host-config being blocked
     assert ws_connected["connected"], (
@@ -289,7 +289,7 @@ def test_bypass_mode_handles_connection_errors_gracefully(
     )
 
 
-def test_bypass_requires_all_minimal_fields(page: Page, app_port: int) -> None:
+def test_bypass_requires_all_minimal_fields(page: Page, app_base_url: str) -> None:
     """Test that bypass mode requires all minimal fields to be present.
 
     Missing any of: BACKEND_BASE_URL, allowedOrigins, or useExternalAuthToken
@@ -314,7 +314,7 @@ def test_bypass_requires_all_minimal_fields(page: Page, app_port: int) -> None:
     page.add_init_script(
         f"""
         window.__streamlit = {{
-            BACKEND_BASE_URL: "http://localhost:{app_port}",
+            BACKEND_BASE_URL: "{app_base_url}",
             HOST_CONFIG: {{
                 allowedOrigins: ["http://localhost"]
                 // Missing useExternalAuthToken - should NOT enable bypass
@@ -323,7 +323,7 @@ def test_bypass_requires_all_minimal_fields(page: Page, app_port: int) -> None:
     """
     )
 
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     # Verify default path was used (host-config before WebSocket)
     hc_events = [e for e in events if e["type"] == "host-config-start"]
@@ -344,7 +344,9 @@ def test_bypass_requires_all_minimal_fields(page: Page, app_port: int) -> None:
     expect(page.get_by_text("Connection status test")).to_be_visible()
 
 
-def test_bypass_requires_non_empty_allowed_origins(page: Page, app_port: int) -> None:
+def test_bypass_requires_non_empty_allowed_origins(
+    page: Page, app_base_url: str
+) -> None:
     """Test that bypass mode requires allowedOrigins to be non-empty."""
     # Track order of events to verify default path is used
     events = []
@@ -363,7 +365,7 @@ def test_bypass_requires_non_empty_allowed_origins(page: Page, app_port: int) ->
     page.add_init_script(
         f"""
         window.__streamlit = {{
-            BACKEND_BASE_URL: "http://localhost:{app_port}",
+            BACKEND_BASE_URL: "{app_base_url}",
             HOST_CONFIG: {{
                 allowedOrigins: [],  // Empty array should NOT enable bypass
                 useExternalAuthToken: false
@@ -372,7 +374,7 @@ def test_bypass_requires_non_empty_allowed_origins(page: Page, app_port: int) ->
     """
     )
 
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     # Verify default path was used (host-config before WebSocket)
     hc_events = [e for e in events if e["type"] == "host-config-start"]
@@ -394,7 +396,7 @@ def test_bypass_requires_non_empty_allowed_origins(page: Page, app_port: int) ->
 
 
 def test_disable_fullscreen_mode_via_window_in_bypass(
-    page: Page, app_port: int
+    page: Page, app_base_url: str
 ) -> None:
     """Test that disableFullscreenMode can be set via window config in bypass mode.
 
@@ -404,7 +406,7 @@ def test_disable_fullscreen_mode_via_window_in_bypass(
     page.add_init_script(
         f"""
         window.__streamlit = {{
-            BACKEND_BASE_URL: "http://localhost:{app_port}",
+            BACKEND_BASE_URL: "{app_base_url}",
             HOST_CONFIG: {{
                 allowedOrigins: ["http://localhost"],
                 useExternalAuthToken: false,
@@ -414,13 +416,13 @@ def test_disable_fullscreen_mode_via_window_in_bypass(
     """
     )
 
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     _verify_fullscreen_button(page, should_be_visible=False)
 
 
 def test_disable_fullscreen_mode_window_takes_precedence_over_endpoint_in_bypass(
-    page: Page, app_port: int
+    page: Page, app_base_url: str
 ) -> None:
     """Test that window config takes precedence over endpoint for disableFullscreenMode in bypass.
 
@@ -442,7 +444,7 @@ def test_disable_fullscreen_mode_window_takes_precedence_over_endpoint_in_bypass
     page.add_init_script(
         f"""
         window.__streamlit = {{
-            BACKEND_BASE_URL: "http://localhost:{app_port}",
+            BACKEND_BASE_URL: "{app_base_url}",
             HOST_CONFIG: {{
                 allowedOrigins: ["http://localhost"],
                 useExternalAuthToken: false,
@@ -452,13 +454,13 @@ def test_disable_fullscreen_mode_window_takes_precedence_over_endpoint_in_bypass
     """
     )
 
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     _verify_fullscreen_button(page, should_be_visible=True)
 
 
 def test_disable_fullscreen_mode_window_takes_precedence_over_endpoint_without_bypass(
-    page: Page, app_port: int
+    page: Page, app_base_url: str
 ) -> None:
     """Test that window config takes precedence over endpoint for disableFullscreenMode without bypass.
 
@@ -484,7 +486,7 @@ def test_disable_fullscreen_mode_window_takes_precedence_over_endpoint_without_b
     page.add_init_script(
         f"""
         window.__streamlit = {{
-            BACKEND_BASE_URL: "http://localhost:{app_port}",
+            BACKEND_BASE_URL: "{app_base_url}",
             HOST_CONFIG: {{
                 disableFullscreenMode: false
             }}
@@ -492,13 +494,13 @@ def test_disable_fullscreen_mode_window_takes_precedence_over_endpoint_without_b
     """
     )
 
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     _verify_fullscreen_button(page, should_be_visible=True)
 
 
 def test_block_error_dialogs_via_window_config_bypass(
-    page: Page, app_port: int
+    page: Page, app_base_url: str
 ) -> None:
     """Test that blockErrorDialogs can be set via window config in bypass mode.
 
@@ -508,7 +510,7 @@ def test_block_error_dialogs_via_window_config_bypass(
     page.add_init_script(
         f"""
         window.__streamlit = {{
-            BACKEND_BASE_URL: "http://localhost:{app_port}",
+            BACKEND_BASE_URL: "{app_base_url}",
             HOST_CONFIG: {{
                 allowedOrigins: ["http://localhost"],
                 useExternalAuthToken: false,
@@ -519,7 +521,7 @@ def test_block_error_dialogs_via_window_config_bypass(
     )
 
     # Initial load of page
-    goto_app(page, f"http://localhost:{app_port}")
+    goto_app(page, app_base_url)
 
     # Verify app loaded
     expect(page.get_by_text("Connection status test")).to_be_visible()
@@ -529,7 +531,7 @@ def test_block_error_dialogs_via_window_config_bypass(
     page.on("console", lambda msg: messages.append(msg.text))
 
     # Navigate to a non-existent page to trigger page not found error
-    page.goto(f"http://localhost:{app_port}/nonexistent_page")
+    page.goto(build_app_url(app_base_url, path="/nonexistent_page"))
 
     # Wait until the expected error is logged
     wait_until(
@@ -546,7 +548,7 @@ def test_block_error_dialogs_via_window_config_bypass(
 
 # Firefox doesn't render pydeck charts properly in CI, so no Mapbox API requests are made
 @pytest.mark.skip_browser("firefox")
-def test_mapbox_token_via_window_config_bypass(page: Page, app_port: int) -> None:
+def test_mapbox_token_via_window_config_bypass(page: Page, app_base_url: str) -> None:
     """Test that mapboxToken from window config is used in Mapbox API requests.
 
     The app contains a pydeck chart with explicit Mapbox style (mapbox://styles/mapbox/light-v9).
@@ -567,7 +569,7 @@ def test_mapbox_token_via_window_config_bypass(page: Page, app_port: int) -> Non
     page.add_init_script(
         f"""
         window.__streamlit = {{
-            BACKEND_BASE_URL: "http://localhost:{app_port}",
+            BACKEND_BASE_URL: "{app_base_url}",
             HOST_CONFIG: {{
                 allowedOrigins: ["http://localhost"],
                 useExternalAuthToken: false,
@@ -577,7 +579,7 @@ def test_mapbox_token_via_window_config_bypass(page: Page, app_port: int) -> Non
     """
     )
 
-    goto_app(page, f"http://localhost:{app_port}/")
+    goto_app(page, app_base_url)
 
     # Wait for the pydeck chart to be visible (it uses Mapbox style)
     expect(page.get_by_text("Mapbox token test")).to_be_visible()
