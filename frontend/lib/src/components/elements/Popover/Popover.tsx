@@ -31,6 +31,7 @@ import BaseButton, {
 import { DynamicIcon } from "~lib/components/shared/Icon"
 import { useCalculatedDimensions } from "~lib/hooks/useCalculatedDimensions"
 import { useEmotionTheme } from "~lib/hooks/useEmotionTheme"
+import { hasLightBackgroundColor } from "~lib/theme"
 
 import {
   StyledPopoverExpansionIcon,
@@ -55,6 +56,7 @@ const Popover: React.FC<React.PropsWithChildren<PopoverProps>> = ({
   const isInSidebar = useContext(IsSidebarContext)
 
   const theme = useEmotionTheme()
+  const lightBackground = hasLightBackgroundColor(theme)
 
   // It would be nice to remove this since it uses a resize observer
   // and therefore has a performance overhead. However, this is needed
@@ -112,10 +114,10 @@ const Popover: React.FC<React.PropsWithChildren<PopoverProps>> = ({
               borderBottomRightRadius: theme.radii.xl,
               borderBottomLeftRadius: theme.radii.xl,
 
-              borderLeftWidth: theme.sizes.borderWidth,
-              borderRightWidth: theme.sizes.borderWidth,
-              borderTopWidth: theme.sizes.borderWidth,
-              borderBottomWidth: theme.sizes.borderWidth,
+              // No border in light mode, visible border in dark mode
+              borderWidth: lightBackground
+                ? theme.spacing.none
+                : theme.sizes.borderWidth,
 
               paddingRight: `calc(${theme.spacing.twoXL} - ${theme.sizes.borderWidth})`, // 1px to account for border.
               paddingLeft: `calc(${theme.spacing.twoXL} - ${theme.sizes.borderWidth})`,
@@ -132,7 +134,10 @@ const Popover: React.FC<React.PropsWithChildren<PopoverProps>> = ({
               borderTopColor: theme.colors.borderColor,
               borderBottomColor: theme.colors.borderColor,
 
-              boxShadow: theme.shadows.popover,
+              // Only show shadow in light mode
+              boxShadow: lightBackground
+                ? theme.shadows.popover
+                : theme.shadows.none,
             }),
           },
         }}
