@@ -372,8 +372,7 @@ const Multiselect: FC<Props> = props => {
                   Body: {
                     style: () => ({
                       maxHeight: "70vh",
-                      // Scrolling is handled by the VirtualDropdown component
-                      overflow: "hidden",
+                      overflow: "auto",
                       boxSizing: "border-box",
 
                       borderTopLeftRadius: theme.radii.default,
