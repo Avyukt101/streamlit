@@ -215,16 +215,23 @@ def select_selectbox_option(
     option : str
         The exact text of the option to select.
     """
-    selectbox = get_selectbox(locator, label)
-
-    # Get the page from the locator
+    # Get the page for potential waits
     page = locator.page if isinstance(locator, Locator) else locator
 
-    # Type to filter the dropdown and press Enter to select
+    # Small wait to ensure selectbox is rendered (helps webkit timing issues)
+    page.wait_for_timeout(100)
+
+    selectbox = get_selectbox(locator, label)
+
+    # Type to filter the dropdown (handles virtualized lists where options
+    # may not be rendered until scrolled into view)
     selectbox_input = selectbox.locator("input")
     selectbox_input.click()
     selectbox_input.fill(option)
-    selectbox_input.press("Enter")
+
+    # Select the option by role from the filtered virtual dropdown
+    dropdown = page.get_by_test_id("stSelectboxVirtualDropdown")
+    dropdown.get_by_role("option", name=option, exact=True).click()
 
     wait_for_app_run(page)
 
