@@ -222,9 +222,8 @@ def select_selectbox_option(
 
     # Type to filter the dropdown (handles virtualized lists where options
     # may not be rendered until scrolled into view)
-    # Click container first to open dropdown
-    selectbox.click()
     selectbox_input = selectbox.locator("input")
+    selectbox_input.click()
     selectbox_input.fill(option)
 
     # Select the option by role from the filtered virtual dropdown
