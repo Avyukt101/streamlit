@@ -83,7 +83,8 @@ def _select_chart_type(app: Page, chart_type: str):
 
 def _set_selection_mode(app: Page, mode: Literal["single-object", "multi-object"]):
     """Set the selection mode for the PyDeck chart."""
-    app.get_by_test_id("stSelectbox").nth(0).locator("input").click()
+    # Click container instead of input
+    app.get_by_test_id("stSelectbox").nth(0).click()
     selection_dropdown = app.locator('[data-baseweb="popover"]').first
     selection_dropdown.locator("li").nth(1 if mode == "multi-object" else 0).click()
 
