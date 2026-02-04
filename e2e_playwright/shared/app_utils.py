@@ -217,6 +217,7 @@ def select_selectbox_option(
     """
     # Get the page for potential waits
     page = locator.page if isinstance(locator, Locator) else locator
+    expect(page).to_be_visible()
 
     selectbox = get_selectbox(locator, label)
 
