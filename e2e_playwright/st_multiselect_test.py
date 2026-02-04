@@ -187,7 +187,6 @@ def test_multiselect_long_values_in_narrow_column(
     multiselect_elem = get_multiselect(app, "multiselect 12")
     wait_for_app_run(app)
     # Wait for list items to be loaded in
-    app.locator("li").all()
     assert_snapshot(multiselect_elem, name="st_multiselect-dropdown_narrow_column")
 
 
@@ -377,7 +376,6 @@ def test_multiselect_accept_new_options(app: Page):
     wait_for_app_run(app)
 
     # Add a third option from original options
-    multiselect_elem.click()
     options_list = app.locator("li")
     # 5 elements: "Select all", "apple", "banana", "orange", "cherry"
     expect(options_list).to_have_count(5)
@@ -394,9 +392,11 @@ def test_multiselect_accept_new_options(app: Page):
     expect(
         multiselect_elem.get_by_role("button").get_by_text("grape", exact=True)
     ).to_be_visible()
+    expect(
+        multiselect_elem.get_by_role("button").get_by_text("mango", exact=True)
+    ).to_be_visible()
 
     # Try to add a fourth option - should be prevented by max_selections
-    multiselect_elem.click()
     expect(
         app.get_by_test_id("stSelectboxVirtualDropdownEmpty").locator("li")
     ).to_have_text(
@@ -414,7 +414,6 @@ def test_multiselect_accept_new_options(app: Page):
     del_from_multiselect(app, "multiselect 14 - accept new options", "mango")
 
     # Verify we can add another option after removing one
-    multiselect_elem.click()
     input_elem.fill("kiwi")
     input_elem.press("Enter")
     wait_for_app_run(app)
