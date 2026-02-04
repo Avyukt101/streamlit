@@ -227,9 +227,9 @@ def select_selectbox_option(
     selectbox_input = selectbox.locator("input")
     selectbox_input.fill(option)
 
-    # Select the option by exact text from the filtered virtual dropdown
+    # Select the option by role from the filtered virtual dropdown
     dropdown = page.get_by_test_id("stSelectboxVirtualDropdown")
-    dropdown.get_by_text(option, exact=True).click()
+    dropdown.get_by_role("option", name=option, exact=True).click()
 
     wait_for_app_run(page)
 
