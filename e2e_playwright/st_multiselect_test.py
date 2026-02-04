@@ -38,8 +38,8 @@ def select_for_multiselect(
 ) -> None:
     """Select an option from a multiselect widget identified by its label."""
     ms = get_multiselect(page, label)
-    # Use force=True to handle empty state where placeholder overlaps input
-    ms.locator("input").click(force=True)
+    # Click on the multiselect container to open dropdown (avoids placeholder interception)
+    ms.click()
     page.get_by_role("option", name=option_text, exact=True).first.click()
     if close_after_selecting:
         page.keyboard.press("Escape")
@@ -148,7 +148,6 @@ def test_multiselect_show_values_in_dropdown(
 ):
     """Screenshot test to check that values are shown in dropdown."""
     multiselect_elem = get_multiselect(app, "multiselect 1")
-    # Empty multiselect - click on container
     multiselect_elem.click()
     wait_for_app_run(app)
     dropdown_elements = app.locator("li")
@@ -169,7 +168,6 @@ def test_multiselect_long_values_in_dropdown(
 ):
     """Should show long values correctly (with ellipses) in the dropdown menu."""
     multiselect_elem = get_multiselect(app, "multiselect 5")
-    # Empty multiselect - click on container
     multiselect_elem.click()
     wait_for_app_run(app)
     # Skip the first element which is "Select all"
@@ -193,7 +191,6 @@ def test_multiselect_long_values_in_narrow_column(
 
 def test_multiselect_register_callback(app: Page):
     """Should call the callback when an option is selected."""
-    # Empty multiselect - click on container
     get_multiselect(app, "multiselect 11").click()
     # Click on "male" option (skip "Select all" which is first)
     app.get_by_role("option", name="male", exact=True).click()
@@ -215,8 +212,7 @@ def test_multiselect_max_selections_1(app: Page):
     selecting.
     """
     select_for_multiselect(app, "multiselect 9", "male", True)
-    # Has item selected - click input directly (no placeholder to intercept)
-    get_multiselect(app, "multiselect 9").locator("input").click()
+    get_multiselect(app, "multiselect 9").click()
     expect(app.locator("li")).to_have_text(
         "You can only select up to 1 option. Remove an option first.",
         use_inner_text=True,
@@ -363,7 +359,7 @@ def test_multiselect_accept_new_options(app: Page):
     # Get the last multiselect (index 13)
     multiselect_elem = get_multiselect(app, "multiselect 14 - accept new options")
 
-    # Empty multiselect - click on container to open dropdown
+    # Click to open dropdown
     multiselect_elem.click()
 
     # Type and add new option "mango"
@@ -377,8 +373,8 @@ def test_multiselect_accept_new_options(app: Page):
     input_elem.press("Enter")
     wait_for_app_run(app)
 
-    # Has 2 items selected - click input directly (no placeholder to intercept)
-    multiselect_elem.locator("input").click()
+    # Add a third option from original options
+    multiselect_elem.click()
     options_list = app.locator("li")
     # 5 elements: "Select all", "apple", "banana", "orange", "cherry"
     expect(options_list).to_have_count(5)
@@ -396,8 +392,8 @@ def test_multiselect_accept_new_options(app: Page):
         multiselect_elem.get_by_role("button").get_by_text("grape", exact=True)
     ).to_be_visible()
 
-    # Has 3 items selected - click input directly (no placeholder to intercept)
-    multiselect_elem.locator("input").click()
+    # Try to add a fourth option - should be prevented by max_selections
+    multiselect_elem.click()
     expect(app.locator("li")).to_have_text(
         "You can only select up to 3 options. Remove an option first.",
         use_inner_text=True,
@@ -412,8 +408,8 @@ def test_multiselect_accept_new_options(app: Page):
     # Remove one option
     del_from_multiselect(app, "multiselect 14 - accept new options", "mango")
 
-    # Has 2 items selected - click input directly (no placeholder to intercept)
-    multiselect_elem.locator("input").click()
+    # Verify we can add another option after removing one
+    multiselect_elem.click()
     input_elem.fill("kiwi")
     input_elem.press("Enter")
     wait_for_app_run(app)
@@ -443,7 +439,7 @@ def test_multiselect_empty_options_with_accept_new_options(app: Page):
     # Verify the initial placeholder shows "Add options" (frontend now handles default placeholders)
     expect(multiselect_elem).to_contain_text("Add options")
 
-    # Empty multiselect - click on container to open input field
+    # Click to open input field
     multiselect_elem.click()
 
     # Type and add new option "strawberry"
