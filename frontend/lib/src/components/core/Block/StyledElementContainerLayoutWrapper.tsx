@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { FC } from "react"
+import { FC, useMemo } from "react"
 
 import type { ElementNode } from "~lib/AppNode"
 import { StyledElementContainer } from "~lib/components/core/Block/styled-components"
@@ -35,7 +35,11 @@ export const StyledElementContainerLayoutWrapper: FC<
 > = ({ node, config, ...rest }) => {
   const { isInHorizontalLayout } = useRequiredContext(FlexContext)
 
-  const styleOverrides = config.computeStyleOverrides()
+  const styleOverrides = useMemo(
+    () => config.computeStyleOverrides(),
+    [config]
+  )
+
   let styles = useLayoutStyles({
     element: node.element,
     subElement:
